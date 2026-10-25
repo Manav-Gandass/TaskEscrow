@@ -1,0 +1,57 @@
+import express from 'express';
+import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+import authRoutes from './routes/auth.routes.js';
+import taskRoutes from './routes/task.routes.js';
+import bidRoutes from './routes/bid.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import deliveryRoutes from './routes/delivery.routes.js';
+import walletRoutes from './routes/wallet.routes.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5001;
+
+// ─── Middleware ───────────────────────────────────────────────────────────────
+app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+);
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/bids', bidRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/wallet', walletRoutes);
+
+// ─── Health check ─────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'TaskEscrow API is running.' });
+});
+
+// ─── 404 handler ─────────────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found.' });
+});
+
+// ─── Database + Server start ──────────────────────────────────────────────────
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB connected');
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
