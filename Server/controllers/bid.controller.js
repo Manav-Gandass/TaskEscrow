@@ -8,11 +8,15 @@ import razorpayInstance from '../config/razorpay.js';
  */
 export const placeBid = async (req, res) => {
   try {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId || req.body.taskId;
     const { pitch, portfolioLink } = req.body;
 
     if (!pitch) {
       return res.status(400).json({ message: 'Pitch is required.' });
+    }
+
+    if (!taskId) {
+      return res.status(400).json({ message: 'Task ID is required.' });
     }
 
     const task = await Task.findById(taskId);

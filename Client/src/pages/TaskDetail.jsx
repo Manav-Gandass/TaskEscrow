@@ -38,6 +38,7 @@ const TaskDetail = () => {
 
   const [task, setTask] = useState(null);
   const [bids, setBids] = useState([]);
+  const [serverMyBid, setServerMyBid] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionMsg, setActionMsg] = useState('');
@@ -61,7 +62,10 @@ const TaskDetail = () => {
     let active = true;
     try {
       const res = await api.get(`/tasks/${id}`);
-      if (active) setTask(res.data.task || res.data);
+      if (active) {
+        setTask(res.data.task || res.data);
+        if (res.data.myBid) setServerMyBid(res.data.myBid);
+      }
     } catch (err) {
       if (active) setError(err.response?.data?.message || 'Failed to load task.');
     }
@@ -90,6 +94,7 @@ const TaskDetail = () => {
         if (!active) return;
         const taskData = taskRes.data.task || taskRes.data;
         setTask(taskData);
+        if (taskRes.data.myBid) setServerMyBid(taskRes.data.myBid);
 
         // Fetch bids if user is the client and task is OPEN
         if (
@@ -122,11 +127,13 @@ const TaskDetail = () => {
   };
 
   /* ─── Check if freelancer has bid ─── */
-  const myBid = bids.find((b) => b.freelancer?._id === user?._id || b.freelancer === user?._id);
+  const myBid =
+    serverMyBid ||
+    bids.find((b) => b.freelancer?._id === user?._id || b.freelancer === user?._id);
   const hasMyBid =
     task?.status === 'OPEN' &&
     user?.role === 'freelancer' &&
-    (myBid !== undefined || bidSuccess);
+    (myBid !== undefined && myBid !== null || bidSuccess);
 
   /* ─── Bid submission ─── */
   const handleBidSubmit = async (e) => {
@@ -135,10 +142,11 @@ const TaskDetail = () => {
     if (!pitch.trim()) { setBidError('Pitch is required.'); return; }
     setBidLoading(true);
     try {
-      await api.post('/bids', { taskId: id, pitch, portfolioLink });
+      await api.post(`/bids/${id}`, { pitch, portfolioLink });
       setBidSuccess(true);
       setPitch('');
       setPortfolioLink('');
+      await refreshAll();
     } catch (err) {
       setBidError(err.response?.data?.message || 'Failed to submit bid.');
     } finally {
@@ -164,7 +172,7 @@ const TaskDetail = () => {
 
       const options = {
         key: keyId,
-        amount: amount * 100,
+        amount: amount, // amount is already in paise from the backend order
         currency: 'INR',
         name: 'TaskEscrow',
         description: `Payment for task: ${task.title}`,
@@ -229,7 +237,7 @@ const TaskDetail = () => {
     setActionMsg('');
     setActionLoading('approve');
     try {
-      await api.post(`/tasks/${id}/approve`);
+      await api.post(`/delivery/${id}/approve`);
       setActionMsg('🎉 Work approved and payment released!');
       await refreshAll();
     } catch (err) {
@@ -245,7 +253,7 @@ const TaskDetail = () => {
     setActionMsg('');
     setActionLoading('revision');
     try {
-      await api.post(`/tasks/${id}/revision`);
+      await api.post(`/delivery/${id}/revision`);
       setActionMsg('🔄 Revision requested. Freelancer has been notified.');
       await refreshAll();
     } catch (err) {
@@ -261,7 +269,7 @@ const TaskDetail = () => {
     setActionMsg('');
     setActionLoading('refund');
     try {
-      await api.post(`/tasks/${id}/refund`);
+      await api.post(`/delivery/${id}/refund`);
       setActionMsg('💰 Refund initiated. Funds returned to your wallet.');
       await refreshAll();
     } catch (err) {

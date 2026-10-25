@@ -7,12 +7,16 @@ import Transaction from '../models/transaction.model.js';
  */
 export const getWallet = async (req, res) => {
   try {
+    const user = await User.findById(req.user._id);
     const transactions = await Transaction.find({ user: req.user._id })
       .populate('task', 'title')
       .sort({ createdAt: -1 });
 
+    const currentBalance = user ? user.walletBalance : (req.user.walletBalance || 0);
+
     return res.status(200).json({
-      walletBalance: req.user.walletBalance,
+      walletBalance: currentBalance,
+      balance: currentBalance,
       transactions,
     });
   } catch (error) {

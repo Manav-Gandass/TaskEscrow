@@ -74,7 +74,8 @@ const Wallet = () => {
       setWithdrawError('Please enter a valid amount (min ₹1).');
       return;
     }
-    if (walletData && amount > walletData.balance) {
+    const currentBalance = walletData?.walletBalance ?? walletData?.balance ?? 0;
+    if (amount > currentBalance) {
       setWithdrawError('Insufficient balance.');
       return;
     }
@@ -130,7 +131,7 @@ const Wallet = () => {
             <div className="balance-left">
               <span className="balance-label">Available Balance</span>
               <span className="balance-amount">
-                ₹{(walletData.balance ?? 0).toLocaleString('en-IN', {
+                ₹{((walletData.walletBalance ?? walletData.balance) || 0).toLocaleString('en-IN', {
                   minimumFractionDigits: 2, maximumFractionDigits: 2
                 })}
               </span>

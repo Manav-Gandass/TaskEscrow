@@ -1,4 +1,5 @@
 import Task from '../models/task.model.js';
+import Bid from '../models/bid.model.js';
 
 /**
  * POST /api/tasks
@@ -99,7 +100,12 @@ export const getTaskById = async (req, res) => {
       return res.status(404).json({ message: 'Task not found.' });
     }
 
-    return res.status(200).json({ task });
+    let myBid = null;
+    if (req.user && req.user.role === 'freelancer') {
+      myBid = await Bid.findOne({ task: task._id, freelancer: req.user._id });
+    }
+
+    return res.status(200).json({ task, myBid });
   } catch (error) {
     console.error('getTaskById error:', error);
     return res.status(500).json({ message: 'Internal server error.' });

@@ -6,8 +6,14 @@ import {
   getTaskById,
   cancelTask,
 } from '../controllers/task.controller.js';
+import {
+  submitDeliverable,
+  approveDelivery,
+  requestRevision,
+  refundClient,
+} from '../controllers/delivery.controller.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
-import { requireClient } from '../middlewares/role.middleware.js';
+import { requireClient, requireFreelancer } from '../middlewares/role.middleware.js';
 
 const router = express.Router();
 
@@ -25,5 +31,11 @@ router.get('/:id', authMiddleware, getTaskById);
 
 // DELETE /api/tasks/:id — client cancels their own OPEN task
 router.delete('/:id', authMiddleware, requireClient, cancelTask);
+
+// Delivery Action Aliases (so both /api/delivery/:taskId/... and /api/tasks/:taskId/... work)
+router.post('/:taskId/submit', authMiddleware, requireFreelancer, submitDeliverable);
+router.post('/:taskId/approve', authMiddleware, requireClient, approveDelivery);
+router.post('/:taskId/revision', authMiddleware, requireClient, requestRevision);
+router.post('/:taskId/refund', authMiddleware, requireClient, refundClient);
 
 export default router;
