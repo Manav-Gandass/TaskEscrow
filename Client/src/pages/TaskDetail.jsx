@@ -159,6 +159,7 @@ const TaskDetail = () => {
     setActionError('');
     setActionMsg('');
     setActionLoading(bidId);
+    let isSuccess = false;
     try {
       const res = await api.post(`/bids/${bidId}/accept`);
       const { razorpayOrderId, amount, keyId, taskId, bidId: rBidId } = res.data;
@@ -178,6 +179,8 @@ const TaskDetail = () => {
         description: `Payment for task: ${task.title}`,
         order_id: razorpayOrderId,
         handler: async (response) => {
+          isSuccess = true;
+          setActionError('');
           try {
             await api.post('/payments/verify', {
               razorpay_order_id: response.razorpay_order_id,
@@ -186,9 +189,11 @@ const TaskDetail = () => {
               taskId,
               bidId: rBidId,
             });
+            setActionError('');
             setActionMsg('✅ Payment successful! Task is now in progress.');
             await refreshAll();
           } catch (verifyErr) {
+            setActionMsg('');
             setActionError(
               verifyErr.response?.data?.message || 'Payment verification failed.'
             );
@@ -198,7 +203,9 @@ const TaskDetail = () => {
         theme: { color: '#6366f1' },
         modal: {
           ondismiss: () => {
-            setActionError('Payment cancelled.');
+            if (!isSuccess) {
+              setActionError('Payment cancelled.');
+            }
             setActionLoading('');
           },
         },
@@ -206,11 +213,14 @@ const TaskDetail = () => {
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (response) => {
-        setActionError(`Payment failed: ${response.error.description}`);
+        if (!isSuccess) {
+          setActionError(`Payment failed: ${response.error?.description || 'Payment failed.'}`);
+        }
         setActionLoading('');
       });
       rzp.open();
     } catch (err) {
+      setActionMsg('');
       setActionError(err.response?.data?.message || 'Failed to accept bid.');
     } finally {
       setActionLoading('');
@@ -397,7 +407,7 @@ const TaskDetail = () => {
       </div>
 
       {/* ── Action Messages ── */}
-      {actionMsg && <div className="alert alert-success">{actionMsg}</div>}
+      {actionMsg && !actionError && <div className="alert alert-success">{actionMsg}</div>}
       {actionError && <div className="alert alert-error">{actionError}</div>}
 
       {/* ══════════════════════════════════════
