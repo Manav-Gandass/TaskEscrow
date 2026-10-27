@@ -1,41 +1,118 @@
 # TaskEscrow 🔒
 ### Campus Micro-Freelance Platform with Payment Escrow
 
-> **End-Term Project — MERN Stack**  
-> A full-stack web application where students post tasks, freelancers bid, and payments are held in a secure escrow vault until the work is verified and approved.
+> **End-Term Software Engineering Project — MERN Stack**  
+> A full-stack web application resolving the peer-to-peer trust deadlock in campus micro-freelancing through programmatic milestone payment escrow and cryptographic verification.
 
 ---
 
-## Problem Statement
+## Final Submission Details
 
-Students regularly exchange micro-services (design work, code fixes, note summaries, etc.) but face a trust deadlock: clients fear paying before receiving work, and freelancers fear doing work before receiving payment. No existing platform (Upwork, Fiverr) serves this use-case at a campus/micro scale without high fees and complex onboarding.
-
-## Target Users
-
-- **Clients:** Students who need small tasks done (design, code, writing)
-- **Freelancers:** Students who want to earn by completing those tasks
-
----
-
-## The 5 Core Workflows
-
-```
-1. Register as Client or Freelancer → Login
-        ↓
-2. Client posts task → Freelancer browses and bids
-        ↓
-3. Client accepts bid → Razorpay escrow payment locked
-        ↓
-4. Freelancer submits work → Client approves or requests revision
-        ↓
-5. Payment releases to freelancer wallet → Freelancer withdraws
+```text
+Project Name:         TaskEscrow
+Student Name:         Manav Gandass
+Problem Statement:    Peer-to-peer trust deadlock in campus micro-freelancing
+GitHub Repository:    https://github.com/<your-username>/TaskEscrow
+Deployed Application: https://<your-app>.vercel.app
+Demo Video:           https://<your-video-link>
+Tech Stack:           React 18, Vite, Node.js, Express.js, MongoDB Atlas, Razorpay, JWT, bcrypt
 ```
 
 ---
 
-## Task Lifecycle (State Machine)
+## 1. Problem Statement
 
+In student, college, and independent developer ecosystems, peers frequently exchange technical micro-services (such as UI design, debugging code, writing scripts, or formatting presentations). However, informal transactions suffer from an inherent **"trust deadlock"**:
+
+1. **Client Risk:** Paying upfront via UPI risks losing money if the freelancer ghosts, delays, or produces poor-quality work.
+2. **Freelancer Risk:** Delivering work before payment risks clients taking the completed files, blocking contact, and refusing compensation.
+
+### Why Existing Solutions Fail:
+Mainstream freelance platforms (Upwork, Fiverr) fail this niche completely:
+* **Excessive Platform Fees:** 10%–20% commission cuts make small tasks financially unviable.
+* **High Withdrawal Thresholds:** Payout minimums of \$20–\$50 and multi-day clearance delays.
+* **Complex Onboarding:** Heavy KYC and tax documentation (PAN/GST/SSN) prevent casual student adoption.
+
+---
+
+## 2. Target Users
+
+* **Student Clients:** Campus clubs, student founders, or classmates who need rapid, discrete tasks completed (logos, bug fixes, frontend components).
+* **Student Freelancers:** Tech-savvy students looking to monetize their engineering or design skills in a safe, guaranteed environment.
+
+---
+
+## 3. Solution
+
+**TaskEscrow** acts as an automated, impartial software escrow mediator:
+* **Guaranteed Payment:** Clients fund tasks into a secure digital lockbox (powered by Razorpay) before work begins, assuring the freelancer that funds exist.
+* **Locked Funds:** Money is safely held in programmatic escrow and cannot be withdrawn unilaterally by either party during the active task lifecycle.
+* **Verified Handshake:** When the freelancer uploads their deliverable, the client reviews it and clicks **"Approve & Release"**, which instantly credits the freelancer’s in-app wallet balance.
+* **Safety Nets:** If work is flawed, the client can **Request Revision**; if the freelancer misses the agreed deadline, the client can execute an automated **Refund** back to their wallet.
+
+---
+
+## 4. Key Features
+
+* **Role-Based Authentication:** Dynamic role switching between Client and Freelancer with session management using secure `HttpOnly` JWT cookies.
+* **Task Marketplace:** Searchable open task feed with budget indicators, deadlines, and project briefs.
+* **Proposal & Bidding System:** Freelancers submit custom pitches and portfolio links; clients review all incoming proposals.
+* **Razorpay Payment Escrow:** Automated checkout order generation with server-side HMAC-SHA256 signature verification and timing-safe comparison (`crypto.timingSafeEqual`).
+* **Interactive Work Delivery & Review Loop:** Submission form for project links/notes with multi-state client review controls (Approve, Revision, Refund).
+* **Virtual In-App Wallet & Audit Logging:** Real-time earnings balance tracking with complete transaction history (`ESCROW_LOCK`, `PAYMENT_RELEASE`, `REFUND`, `WITHDRAWAL`).
+
+---
+
+## 5. System Architecture
+
+TaskEscrow adheres strictly to the **Model-View-Controller (MVC)** design pattern on the backend and a **component-driven unidirectional data-flow** architecture on the frontend.
+
+```mermaid
+flowchart TD
+    Client["React 18 + Vite Frontend<br/>(React Router v6 + Context API)"]
+    
+    subgraph Express_Backend ["Express.js Backend (MVC)"]
+        Routes["Routes Layer<br/>(/auth, /tasks, /bids, /payments, /delivery, /wallet)"]
+        Middlewares["Auth & Role Middlewares<br/>(JWT Cookie + Client/Freelancer Guard)"]
+        Controllers["Controllers Layer<br/>(Business Logic & Validation)"]
+        Models["Mongoose Models<br/>(User, Task, Bid, Transaction)"]
+    end
+    
+    Database[("MongoDB Atlas Cloud Database")]
+    RazorpayAPI["Razorpay Payment Gateway<br/>(Orders & HMAC Signatures)"]
+
+    Client -->|"HTTPS REST Requests + HttpOnly Cookies"| Routes
+    Routes --> Middlewares
+    Middlewares --> Controllers
+    Controllers --> Models
+    Models <--> Database
+    Controllers <-->|"Order Creation & Verification"| RazorpayAPI
 ```
+
+---
+
+## 6. The 5 Core Workflows
+
+```text
+[1. Auth & Role]      → Register as Client or Freelancer → Login (HttpOnly JWT Cookie)
+         ↓
+[2. Post & Bid]       → Client creates task (Budget, Deadline) → Freelancer browses & submits proposal
+         ↓
+[3. Escrow Locking]   → Client accepts bid → Razorpay Payment Modal → HMAC-SHA256 verified → Task IN_PROGRESS
+         ↓
+[4. Delivery & Review]→ Freelancer submits project link → Task UNDER_REVIEW:
+                          • Approved? → Task COMPLETED, funds released to Freelancer wallet
+                          • Revision? → Task reverted to IN_PROGRESS
+                          • Overdue?  → Client executes REFUND back to wallet
+         ↓
+[5. Wallet Settlement]→ Freelancer views earnings → Initiates Withdrawal → Transaction audit log updated
+```
+
+---
+
+## 7. Task Lifecycle State Machine
+
+```text
 OPEN  ──(bid accepted + payment verified)──▶  IN_PROGRESS
                                                     │
                               ┌─────────────────────┘
@@ -52,40 +129,46 @@ IN_PROGRESS/UNDER_REVIEW + deadline passed  ──▶  REFUNDED
 
 ---
 
-## Tech Stack
+## 8. Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite, React Router DOM v6, Axios |
-| Backend | Node.js, Express.js |
-| Database | MongoDB, Mongoose |
-| Auth | JWT (HttpOnly Cookies), bcrypt (10 rounds) |
-| Payments | Razorpay (order creation + HMAC-SHA256 signature verification) |
-| State | React Context API (AuthContext) |
+| Layer | Technology | Engineering Purpose |
+|---|---|---|
+| **Frontend** | React 18, Vite | Component-driven UI, fast development with HMR |
+| **Routing** | React Router DOM v6 | Single Page Application (SPA) routing with role-based route guards |
+| **HTTP Client** | Axios | Network requests with global `withCredentials: true` cookie transport |
+| **Backend Runtime** | Node.js (ES Modules) | High-concurrency, asynchronous event-driven JavaScript runtime |
+| **Web Framework** | Express.js | MVC API structure with modular routers and error-handling middleware |
+| **Database & ODM** | MongoDB Atlas, Mongoose | Cloud NoSQL persistence with schema validation, indexes, and document references |
+| **Authentication** | JWT, bcrypt | Password hashing (10 salt rounds) and session signing via `HttpOnly` cookies |
+| **Payment Gateway** | Razorpay SDK | Payment order creation, INR transaction handling, and HMAC-SHA256 signature verification |
+| **Styling** | Custom Pure CSS | Lightweight, responsive design using CSS variables without UI library bloat |
 
 ---
 
-## Project Structure
+## 9. Project Directory Layout
 
-```
+```text
 MERN-End_Term/
+├── .gitignore                     # Comprehensive git ignore (blocks .env, node_modules, dist)
+├── README.md                      # Root documentation & architecture report
 ├── Server/
-│   ├── config/razorpay.js
+│   ├── config/
+│   │   └── razorpay.js            # Razorpay SDK initialization
 │   ├── controllers/
-│   │   ├── auth.controller.js
-│   │   ├── bid.controller.js
-│   │   ├── delivery.controller.js
-│   │   ├── payment.controller.js
-│   │   ├── task.controller.js
-│   │   └── wallet.controller.js
+│   │   ├── auth.controller.js     # Register, Login, Logout, Profile
+│   │   ├── bid.controller.js      # Place bid, View bids, Accept/Reject bid
+│   │   ├── delivery.controller.js # Submit deliverable, Approve, Revision, Refund
+│   │   ├── payment.controller.js  # Razorpay HMAC-SHA256 signature verification
+│   │   ├── task.controller.js     # Task CRUD, Open feed, My tasks
+│   │   └── wallet.controller.js   # Balance inquiry, Mock withdrawal, Transaction log
 │   ├── middlewares/
-│   │   ├── auth.middleware.js
-│   │   └── role.middleware.js
+│   │   ├── auth.middleware.js     # JWT extraction from cookie and verification
+│   │   └── role.middleware.js     # requireClient & requireFreelancer guards
 │   ├── models/
-│   │   ├── user.model.js
-│   │   ├── task.model.js
-│   │   ├── bid.model.js
-│   │   └── transaction.model.js
+│   │   ├── bid.model.js           # Proposal schema (pitch, portfolio, status)
+│   │   ├── task.model.js          # Task schema with 6 lifecycle states
+│   │   ├── transaction.model.js   # Audit log schema for money movements
+│   │   └── user.model.js          # User schema with roles and wallet balance
 │   ├── routes/
 │   │   ├── auth.routes.js
 │   │   ├── bid.routes.js
@@ -93,121 +176,116 @@ MERN-End_Term/
 │   │   ├── payment.routes.js
 │   │   ├── task.routes.js
 │   │   └── wallet.routes.js
-│   ├── utils/generateToken.js
-│   ├── index.js
-│   └── .env.example
+│   ├── utils/
+│   │   └── generateToken.js       # JWT signing & cross-domain cookie utility
+│   ├── .env.example
+│   ├── index.js                   # Express application entry point & middleware mounting
+│   └── package.json
 └── Client/
-    └── src/
-        ├── context/AuthContext.jsx
-        ├── components/Navbar.jsx, ProtectedRoute.jsx
-        ├── pages/
-        │   ├── Login.jsx, Register.jsx
-        │   ├── Dashboard.jsx
-        │   ├── TaskList.jsx, CreateTask.jsx, TaskDetail.jsx
-        │   └── Wallet.jsx
-        └── services/api.js
+    ├── public/
+    ├── src/
+    │   ├── components/
+    │   │   ├── Navbar.jsx         # Global navigation header with role-aware links
+    │   │   └── ProtectedRoute.jsx # Session route guard redirecting unauthenticated users
+    │   ├── context/
+    │   │   └── AuthContext.jsx    # React Context provider for user session state
+    │   ├── pages/
+    │   │   ├── CreateTask.jsx     # Task posting form with validation (Client only)
+    │   │   ├── Dashboard.jsx      # Role-based dashboard (Posted tasks vs Active tasks)
+    │   │   ├── Login.jsx          # User login page
+    │   │   ├── Register.jsx       # User registration page (Client / Freelancer selection)
+    │   │   ├── TaskDetail.jsx     # Comprehensive task lifecycle management & Razorpay modal
+    │   │   ├── TaskList.jsx       # Open task marketplace feed (Freelancer only)
+    │   │   └── Wallet.jsx         # Balance card, withdrawal modal, and audit log table
+    │   ├── services/
+    │   │   └── api.js             # Configured Axios instance
+    │   ├── App.css                # Global responsive design & status badge styles
+    │   ├── App.jsx                # Route declarations & Context wrapping
+    │   └── main.jsx               # Application DOM mount
+    ├── vercel.json                # Single-Page Application routing rewrite rules
+    ├── .env.example
+    ├── vite.config.js
+    └── package.json
 ```
 
 ---
 
-## Local Setup
+## 10. API Reference
+
+| Method | Endpoint | Auth Required | Role | Description |
+|---|---|:---:|:---:|---|
+| `POST` | `/api/auth/register` | No | Public | Register a new user (`client` or `freelancer`) |
+| `POST` | `/api/auth/login` | No | Public | Authenticate user and issue `HttpOnly` JWT cookie |
+| `GET` | `/api/auth/me` | Yes | Any | Return profile of currently authenticated user |
+| `POST` | `/api/auth/logout` | Yes | Any | Clear session cookie |
+| `POST` | `/api/tasks` | Yes | Client | Post a new task with budget and deadline |
+| `GET` | `/api/tasks` | Yes | Any | Retrieve all open tasks |
+| `GET` | `/api/tasks/my` | Yes | Any | Role-aware query returning user's active/posted tasks |
+| `GET` | `/api/tasks/:id` | Yes | Any | Retrieve comprehensive task details |
+| `DELETE` | `/api/tasks/:id` | Yes | Client | Cancel an open task |
+| `POST` | `/api/bids/:taskId` | Yes | Freelancer | Submit a proposal bid on an open task |
+| `GET` | `/api/bids/:taskId` | Yes | Client | Retrieve all bids for an owned task |
+| `PATCH` | `/api/bids/:bidId/accept` | Yes | Client | Accept proposal and generate Razorpay escrow order |
+| `PATCH` | `/api/bids/:bidId/reject` | Yes | Client | Reject proposal |
+| `POST` | `/api/payments/verify` | Yes | Client | Validate HMAC-SHA256 signature and lock funds |
+| `POST` | `/api/delivery/:taskId/submit` | Yes | Freelancer | Upload deliverable link and notes |
+| `POST` | `/api/delivery/:taskId/approve` | Yes | Client | Approve work, complete task, and release funds |
+| `POST` | `/api/delivery/:taskId/revision`| Yes | Client | Request revision and return task to progress |
+| `POST` | `/api/delivery/:taskId/refund` | Yes | Client | Issue refund if agreed deadline has elapsed |
+| `GET` | `/api/wallet` | Yes | Any | Fetch current wallet balance and transaction ledger |
+| `POST` | `/api/wallet/withdraw` | Yes | Any | Withdraw funds from virtual wallet |
+
+---
+
+## 11. Security & Production Engineering
+
+1. **Zero Raw Password Storage:** Cryptographic one-way hashing with `bcrypt` (10 salt rounds) before database persistence.
+2. **XSS-Resistant Cookie Transport:** JWT tokens are stored in browser-level `HttpOnly` cookies (`SameSite: None` in production, `SameSite: Lax` in local), preventing token theft via malicious script injection.
+3. **Timing-Safe Payment Signature Verification:** Cryptographic HMAC-SHA256 signatures from Razorpay are verified using Node's native `crypto.timingSafeEqual` to eliminate timing side-channel attacks.
+4. **Strict Authorization & IDOR Defense:** All mutation endpoints enforce ownership checks; users cannot view bids, modify tasks, or trigger refunds for resources they do not own.
+5. **No Secrets in Source Control:** `.gitignore` comprehensively ignores all `.env` files, build output (`dist/`), and dependency folders.
+
+---
+
+## 12. Local Development Setup
 
 ### Prerequisites
-- Node.js v18+
-- MongoDB running locally on port 27017
+* Node.js (v18.0.0 or higher)
+* MongoDB (Local instance or MongoDB Atlas connection URI)
+* Razorpay Test Account (Key ID & Key Secret)
 
-### 1. Backend
+### 1. Server Configuration
 ```bash
 cd Server
-# Copy the env file
 copy .env.example .env
-# Fill in your Razorpay keys in .env
+# Edit .env and supply your MONGO_URI, RAZORPAY_KEY_ID, and RAZORPAY_KEY_SECRET
 npm install
 npm run dev
 ```
-Server starts on `http://localhost:5001`
+*Backend runs on `http://localhost:5001`*
 
-### 2. Frontend
+### 2. Client Configuration
 ```bash
 cd Client
+copy .env.example .env
 npm install
 npm run dev
 ```
-Client starts on `http://localhost:5173`
+*Frontend runs on `http://localhost:5173`*
 
 ---
 
-## Environment Variables
+## 13. Deployment Guide
 
-### Server `.env`
-```
-PORT=5001
-MONGO_URI=mongodb://127.0.0.1:27017/taskescrow
-JWT_SECRET=your_jwt_secret_here
-RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXXXXXXXX
-RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXXXXXXXXXX
-CLIENT_URL=http://localhost:5173
-NODE_ENV=development
-```
-
-### Client `.env`
-```
-VITE_API_URL=http://localhost:5001/api
-```
-
-> ⚠️ Never commit `.env` files to GitHub. They are in `.gitignore`.
+* **Database:** Hosted on **MongoDB Atlas** (Cloud M0 Sandbox).
+* **Backend:** Deployed on **[Render.com](https://render.com)** as a Web Service. Root Directory: `Server`, Build: `npm install`, Start: `node index.js`.
+* **Frontend:** Deployed on **[Vercel.com](https://vercel.com)**. Root Directory: `Client`, Build: `npm run build`, Output: `dist`. SPA rewrites configured via `Client/vercel.json`.
 
 ---
 
-## API Endpoints
+## 14. Demo Video Guidelines (3–5 Minutes)
 
-| Method | Endpoint | Auth | Role | Description |
-|---|---|---|---|---|
-| POST | /api/auth/register | No | Any | Register user |
-| POST | /api/auth/login | No | Any | Login |
-| GET | /api/auth/me | Yes | Any | Get current user |
-| POST | /api/auth/logout | Yes | Any | Logout |
-| POST | /api/tasks | Yes | Client | Post a new task |
-| GET | /api/tasks | Yes | Any | Browse OPEN tasks |
-| GET | /api/tasks/my | Yes | Any | My tasks (role-aware) |
-| GET | /api/tasks/:id | Yes | Any | Task detail |
-| DELETE | /api/tasks/:id | Yes | Client | Cancel task (OPEN only) |
-| POST | /api/bids/:taskId | Yes | Freelancer | Place a bid |
-| GET | /api/bids/:taskId | Yes | Client | View bids on my task |
-| PATCH | /api/bids/:bidId/accept | Yes | Client | Accept bid → creates Razorpay order |
-| PATCH | /api/bids/:bidId/reject | Yes | Client | Reject bid |
-| POST | /api/payments/verify | Yes | Client | HMAC-verify Razorpay signature → lock escrow |
-| POST | /api/delivery/:taskId/submit | Yes | Freelancer | Submit deliverable |
-| POST | /api/delivery/:taskId/approve | Yes | Client | Approve work → release payment |
-| POST | /api/delivery/:taskId/revision | Yes | Client | Request revision |
-| POST | /api/delivery/:taskId/refund | Yes | Client | Refund (deadline passed) |
-| GET | /api/wallet | Yes | Any | Balance + transaction history |
-| POST | /api/wallet/withdraw | Yes | Any | Withdraw from wallet |
-
----
-
-## Security Highlights
-- Passwords hashed with bcrypt (10 salt rounds) — never stored raw
-- JWTs stored in `HttpOnly` cookies — inaccessible to JavaScript (`document.cookie`)
-- Razorpay payment verified server-side using HMAC-SHA256 with `crypto.timingSafeEqual` (prevents timing attacks)
-- Escrow funds only credited to freelancer after cryptographic payment proof
-- All routes enforce ownership checks (users can only action their own tasks/orders)
-- Role-based middleware prevents clients acting as freelancers and vice versa
-- No secrets committed to Git
-
----
-
-## Engineering Depth Checklist
-
-- [x] JWT authentication with HttpOnly cookies
-- [x] Role-based authorization (client / freelancer)
-- [x] Multi-step task lifecycle state machine (6 states)
-- [x] Razorpay payment escrow — order creation + signature verification
-- [x] HMAC-SHA256 cryptographic payment verification with timing-safe compare
-- [x] Atomic wallet crediting only after payment verification
-- [x] Automatic bid rejection when another bid is accepted
-- [x] Deadline-based refund eligibility engine
-- [x] Transaction audit log for every money movement
-- [x] Race-condition safe useEffect cleanups on all data-fetching pages
-- [x] Complete loading, error, and empty states on every page
-- [x] Input validation on both client and server sides
+1. **0:00 – 0:45 (Problem & Overview):** Explain the campus micro-freelancing trust deadlock and how TaskEscrow resolves it.
+2. **0:45 – 2:00 (Client Posting & Freelancer Bid):** Side-by-side browser windows showing a client posting a task and a freelancer submitting a bid.
+3. **2:00 – 3:15 (Payment Escrow & Delivery):** Client accepting bid, Razorpay test checkout, deliverable link submission, and client approval.
+4. **3:15 – 4:00 (Wallet & Code Highlights):** Show freelancer wallet balance credit, transaction log, and briefly discuss the MVC architecture and HMAC-SHA256 verification.
