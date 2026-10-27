@@ -16,6 +16,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Trust reverse proxy (needed for secure cookies on Render/Heroku/Railway)
+app.set('trust proxy', 1);
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(cookieParser());
